@@ -1,0 +1,136 @@
+version: "3.8"
+
+services:
+  # =========================
+  # Reverse Proxy (ENTRYPOINT)
+  # =========================
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      api:
+        condition: service_healthy
+      websocket:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      # SSL certs from host (Let's Encrypt)
+      - /etc/letsencrypt/live/api.envitatechnologies.com/fullchain.pem:/etc/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/api.envitatechnologies.com/privkey.pem:/etc/ssl/privkey.pem:ro
+
+  # =========================
+  # API SERVER
+  # =========================
+  api:
+    build: ../server
+    container_name: api-server
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # =========================
+  # WEBSOCKET SERVER
+  # =========================
+  websocket:
+    build: ../websocket
+    container_name: websocket-server
+    expose:
+      - "5000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # =========================
+  # NOTIFICATION WORKER
+  # =========================
+  notification-worker:
+    build: ../workers/notification
+    container_name: notification-worker
+    env_file:
+      - .env
+    restart: unless-stopped
+    #healthcheck:
+    #  test: ["CMD-SHELL", "ps aux | grep node | grep -v grep"]
+    #  interval: 30s
+    #  timeout: 5s
+    #  retries: 3
+
+  # =========================
+  # REDIS (Realtime / WS adapter)
+  # =========================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    #healthcheck:
+    #  test: ["CMD", "redis-cli", "ping"]
+    #  interval: 10s
+    #  timeout: 3s
+    #  retries: 3
+
+  # =========================
+  # RABBITMQ (Workers Queue)
+  # =========================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      # Remove this later or restrict via security group
+      - "15672:15672"
+    #healthcheck:
+    #  test: ["CMD", "rabbitmq-diagnostics", "ping"]
+    #  interval: 30s
+    #  timeout: 10s
+    #  retries: 3
+
+  # =========================
+  # PROMETHEUS
+  # =========================
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  # =========================
+  # GRAFANA
+  # =========================
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    volumes:
+      - ./grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # =========================
+  # LOKI
+  # =========================
+  loki:
+    image: grafana/loki
+    container_name: loki
+    volumes:
+      - ./loki:/var/lib/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
