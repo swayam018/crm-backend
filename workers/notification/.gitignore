@@ -1,0 +1,42 @@
+# Node.js
+node_modules/
+npm-debug.log*
+.env*
+.DS_Store # macOS specific
+
+# Logs
+logs/
+*.log
+
+# Build artifacts
+build/
+public/ # If used for compiled frontend assets
+
+# Editor specific
+.vscode/ # VS Code settings
+.idea/ # IntelliJ IDEA settings
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Test coverage
+coverage/
+
+# Database files (if local)
+*.sqlite
+*.sqlite3
+*.db
+*.db3
